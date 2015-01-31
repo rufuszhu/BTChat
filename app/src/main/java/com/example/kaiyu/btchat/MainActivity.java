@@ -1,5 +1,6 @@
 package com.example.kaiyu.btchat;
 
+import android.app.ActionBar;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.Intent;
@@ -29,10 +30,13 @@ public class MainActivity extends ActionBarActivity {
     private static final int REQUEST_CONNECT_DEVICE_INSECURE = 2;
     private static final int REQUEST_ENABLE_BT = 3;
 
-
+    private ListView mConversationView;
+    private EditText mOutEditText;
+    private Button mSendButton;
     private Button btn_chooseDevice;
     private Button btn_visible;
     private TextView tv_status;
+
 
     /**
      * Name of the connected device
@@ -108,7 +112,9 @@ public class MainActivity extends ActionBarActivity {
         btn_chooseDevice = (Button) findViewById(R.id.btn_chooseDevice);
         btn_visible = (Button) findViewById(R.id.btn_visible);
         tv_status = (TextView) findViewById(R.id.tv_status);
-        
+        mConversationView = (ListView) findViewById(R.id.in);
+        mOutEditText = (EditText) findViewById(R.id.edit_text_out);
+        mSendButton = (Button) findViewById(R.id.button_send);
     }
 
     @Override
@@ -184,21 +190,26 @@ public class MainActivity extends ActionBarActivity {
 
         mConversationView.setAdapter(mConversationArrayAdapter);
 
-        // Initialize the compose field with a listener for the return key
-        mOutEditText.setOnEditorActionListener(mWriteListener);
 
         // Initialize the send button with a listener that for click events
         mSendButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 // Send a message using content of the edit text widget
-                View view = getView();
-                if (null != view) {
-                    TextView textView = (TextView) view.findViewById(R.id.edit_text_out);
-                    String message = textView.getText().toString();
+
+                    String message = mOutEditText.getText().toString();
                     sendMessage(message);
-                }
+
             }
         });
+
+        btn_visible.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                // Send a message using content of the edit text widget
+                ensureDiscoverable();
+            }
+        });
+
+
 
         // Initialize the BluetoothChatService to perform bluetooth connections
         mChatService = new BluetoothChatService(this, mHandler);
@@ -213,20 +224,19 @@ public class MainActivity extends ActionBarActivity {
     private final Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
-            FragmentActivity activity = getActivity();
             switch (msg.what) {
                 case Constants.MESSAGE_STATE_CHANGE:
                     switch (msg.arg1) {
                         case BluetoothChatService.STATE_CONNECTED:
-                            setStatus(getString(R.string.title_connected_to, mConnectedDeviceName));
+                            tv_status.setText(getString(R.string.title_connected_to, mConnectedDeviceName));
                             mConversationArrayAdapter.clear();
                             break;
                         case BluetoothChatService.STATE_CONNECTING:
-                            setStatus(R.string.title_connecting);
+                            tv_status.setText(R.string.title_connecting);
                             break;
                         case BluetoothChatService.STATE_LISTEN:
                         case BluetoothChatService.STATE_NONE:
-                            setStatus(R.string.title_not_connected);
+                            tv_status.setText(R.string.title_not_connected);
                             break;
                     }
                     break;
@@ -245,20 +255,21 @@ public class MainActivity extends ActionBarActivity {
                 case Constants.MESSAGE_DEVICE_NAME:
                     // save the connected device's name
                     mConnectedDeviceName = msg.getData().getString(Constants.DEVICE_NAME);
-                    if (null != activity) {
-                        Toast.makeText(activity, "Connected to "
+                    if (null != _context) {
+                        Toast.makeText(_context, "Connected to "
                                 + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
                     }
                     break;
                 case Constants.MESSAGE_TOAST:
-                    if (null != activity) {
-                        Toast.makeText(activity, msg.getData().getString(Constants.TOAST),
+                    if (null != _context) {
+                        Toast.makeText(_context, msg.getData().getString(Constants.TOAST),
                                 Toast.LENGTH_SHORT).show();
                     }
                     break;
             }
         }
     };
+
 
     /**
      * Makes this device discoverable.
